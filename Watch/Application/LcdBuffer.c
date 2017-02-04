@@ -51,7 +51,8 @@
 
 #define FTM_START_ROW                 54
 #define FTM_ROW_NUM                   24
-
+ #define STATUS_BAR_HEIGHT       12
+#define STATUS_BAR_START_ROW    0
 /*
  * days of week are 0-6 and months are 1-12
  */
@@ -140,8 +141,10 @@ static void DrawMenu1(void)
 {
   unsigned char i = 0;
 
-  if (BluetoothState() == Initial) i = MENU_ITEM_RADIO_INIT;
-  else i = RadioOn() ? MENU_ITEM_RADIO_ON : MENU_ITEM_RADIO_OFF;
+  if (BluetoothState() == Initial) 
+    i = MENU_ITEM_RADIO_INIT;
+  else 
+    i = RadioOn() ? MENU_ITEM_RADIO_ON : MENU_ITEM_RADIO_OFF;
 
   CopyColumnsIntoMyBuffer(pIconMenuItem[i],
                           BUTTON_ICON_A_F_ROW,
@@ -170,14 +173,14 @@ static void DrawMenu1(void)
 
 static void DrawMenu2(void)
 {
+  unsigned char MuxMode = GetMuxMode();
+  unsigned char i = 0; 
+  
   CopyColumnsIntoMyBuffer(pIconMenuItem[RESET_PIN ? MENU_ITEM_NMI : MENU_ITEM_RST],
                           BUTTON_ICON_A_F_ROW,
                           BUTTON_ICON_ROWS,
                           RIGHT_BUTTON_COLUMN,
-                          BUTTON_ICON_COLS);
-
-  unsigned char MuxMode = GetMuxMode();
-  unsigned char i = 0;
+                          BUTTON_ICON_COLS);  
 
   if (MuxMode == MUX_MODE_SERIAL) i = MENU_ITEM_SERIAL;
   else if (MuxMode == MUX_MODE_GND) i = MENU_ITEM_GROUND;
@@ -398,16 +401,16 @@ void DrawWatchStatusScreen(unsigned char Full)
   }
 }
 
-#define FTM_IDLE      0
-#define FTM_VIBRA_A   1
-#define FTM_VIBRA_B   2
-#define FTM_EXIT      3
-static unsigned char State = FTM_EXIT;
+
 
 void HandleFieldTestMode(unsigned char const Option)
 {
-  static unsigned char Vibrate = FALSE;
-  static unsigned long Counter = 0;
+  static unsigned char Vibrate;
+  static unsigned long Counter ;
+   // Draw counter
+  char Elapse[10] = {0};
+  char *pChar = NULL;
+  unsigned long Hms = 0.0;
 
   switch (Option)
   {
@@ -440,13 +443,14 @@ void HandleFieldTestMode(unsigned char const Option)
 
   case FIELD_TEST_BUTTON_C:
 
-    if (State == FTM_EXIT) return;
+    if (State == FTM_EXIT) 
+      return;
 
     State = FTM_IDLE;
     StopTimer(FieldTestTimer);
     Vibrate = FALSE;
     SetVibeMotorState(Vibrate);
-    return;
+    break;
 
   case FIELD_TEST_BUTTON_A:
 
@@ -464,16 +468,12 @@ void HandleFieldTestMode(unsigned char const Option)
     State = FTM_EXIT;
     StopTimer(FieldTestTimer);
     SendMessage(IdleUpdateMsg, MSG_OPT_NONE);
-    return;
+    break;
 
   default: break;
   }
 
-  // Draw counter
-  char Elapse[10];
-  char *pChar;
-  unsigned long Hms;
-
+ 
   gRow = FTM_START_ROW;
   gColumn = 0;
   gBitColumnMask = BIT7;
@@ -595,13 +595,18 @@ unsigned char const *GetIcon(unsigned char Id)
 
 void DrawDateTime(void)
 {
+    unsigned char DayFirst;
+    char Hms[4] = {0};
+    unsigned char Year;
+    char Rtc[2];
+   
   // clean date&time area
   FillLcdBuffer(STARTING_ROW, WATCH_DRAW_SCREEN_ROW_NUM, LCD_WHITE);
 
   gRow = DEFAULT_HOURS_ROW;
   gColumn = DEFAULT_HOURS_COL;
   gBitColumnMask = DEFAULT_HOURS_COL_BIT;
-  char Hms[4];
+  
   GetHour(Hms);
   DrawString(Hms, DEFAULT_HOURS_FONT, DRAW_OPT_OR);
 
@@ -646,7 +651,7 @@ void DrawDateTime(void)
       gColumn = DEFAULT_DATE_YEAR_COL;
       gBitColumnMask = DEFAULT_DATE_YEAR_COL_BIT;
 
-      unsigned char Year = RTCYEARH;
+      Year = RTCYEARH;
       DrawChar(BCD_H(Year) + ZERO, DEFAULT_DATE_YEAR_FONT, DRAW_OPT_OR);
       DrawChar(BCD_L(Year) + ZERO, DEFAULT_DATE_YEAR_FONT, DRAW_OPT_OR);
       Year = RTCYEARL;
@@ -658,8 +663,8 @@ void DrawDateTime(void)
     {
       //Display month and day
       //Watch controls time - use default date position
-      unsigned char DayFirst = GetProperty(PROP_DDMM_DATE_FORMAT);
-      char Rtc[2];
+      DayFirst= GetProperty(PROP_DDMM_DATE_FORMAT);
+      
       Rtc[DayFirst ? 0 : 1] = RTCDAY;
       Rtc[DayFirst ? 1 : 0] = RTCMON;
 
@@ -705,7 +710,8 @@ static void GetMinute(char *Min)
 {  
   *Min++ = BCD_H(RTCMIN) + ZERO;
   *Min++ = BCD_L(RTCMIN) + ZERO;
-  *Min = NULL;
+  Min = NULL;
+  return;
 }
 
 static void GetSecond(char *Sec)
@@ -713,14 +719,15 @@ static void GetSecond(char *Sec)
   *Sec++ = COLON;
   *Sec++ = BCD_H(RTCSEC) + ZERO;
   *Sec++ = BCD_L(RTCSEC) + ZERO;
-  *Sec = NULL;
+  Sec = NULL;
+  return;
 }
 
-#define STATUS_BAR_HEIGHT       12
-#define STATUS_BAR_START_ROW    0
+
 
 void DrawStatusBarToLcd(void)
 {
+  char Hms[4] = {0};
   FillLcdBuffer(STATUS_BAR_START_ROW, STATUS_BAR_HEIGHT, LCD_BLACK);
 
   Draw_t Info;
@@ -730,7 +737,7 @@ void DrawStatusBarToLcd(void)
   gRow = STATUS_BAR_START_ROW + 3;
   gColumn = 0;
   gBitColumnMask = BIT2;
-  char Hms[4];
+  
   GetHour(Hms);
   DrawString(Hms, MetaWatch7, DRAW_OPT_NOT);
   GetMinute(Hms);
@@ -930,6 +937,8 @@ void BitOp(unsigned char *pByte, unsigned char Bit, unsigned int Set, unsigned c
 void DrawBootloaderScreen(void)
 {
 #if BOOTLOADER
+  unsigned char i = 0;
+  char const *pBootVer = BootVersion;
 //  ClearLcd();
   FillLcdBuffer(STARTING_ROW, LCD_ROW_NUM, LCD_WHITE);
   CopyRowsIntoMyBuffer(pBootloader, BOOTLOADER_START_ROW, BOOTLOADER_ROWS);
@@ -940,10 +949,6 @@ void DrawBootloaderScreen(void)
   gBitColumnMask = BIT3;
   DrawString("V ", MetaWatch5, DRAW_OPT_OR);
   DrawString((char const *)VERSION, MetaWatch5, DRAW_OPT_OR);
-
-  unsigned char i = 0;
-  char const *pBootVer = BootVersion;
-
   PrintF("BL_VER addr:%04X %s", pBootVer, BootVersion);
 
   while (*pBootVer && i++ < 8)
@@ -991,9 +996,9 @@ void DrawSplashScreen(void)
 
 void FillLcdBuffer(unsigned char StartRow, unsigned char RowNum, unsigned char Value)
 {
-  if (GetLcdBuffer() == NULL) return;
-
   unsigned char i, k;
+  if (GetLcdBuffer() == NULL) 
+    return;
   for (i = 0; i < RowNum; ++i)
   {
     LcdBuf[StartRow].Row = StartRow;
